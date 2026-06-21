@@ -1,0 +1,57 @@
+#contextos-float-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #000000;
+  color: #ffffff;
+  border: 1px solid #2a2a2a;
+  border-radius: 999px;
+  font-family: -apple-system, "Inter", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: transform 0.12s, border-color 0.12s;
+}
+
+#contextos-float-btn:hover {
+  border-color: #707070;
+  transform: translateY(-1px);
+}
+
+#contextos-float-btn .contextos-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3ecf8e;
+  flex-shrink: 0;
+}
+
+#contextos-toast {
+  position: fixed;
+  bottom: 78px;
+  right: 24px;
+  z-index: 999999;
+  background: #111111;
+  border: 1px solid #2a2a2a;
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-family: -apple-system, "Inter", sans-serif;
+  font-size: 12px;
+  max-width: 280px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+
+#contextos-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}

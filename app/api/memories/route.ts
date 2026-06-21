@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { resolveUid } from "@/lib/auth-resolver";
 import { extractKnowledgeFromConversation, updateKnowledgeGraph } from "@/lib/gemini";
 import { getUserGeminiKey, NoApiKeyError } from "@/lib/get-user-key";
-
-async function getUid(request: Request): Promise<string> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) throw new Error("Missing auth token");
-  const token = authHeader.split("Bearer ")[1];
-  const decoded = await verifyFirebaseToken(token);
-  return decoded.uid;
-}
 
 async function assertOwnsProject(
   supabase: ReturnType<typeof createClient>,
@@ -28,7 +20,7 @@ async function assertOwnsProject(
 
 export async function GET(request: Request) {
   try {
-    const uid = await getUid(request);
+    const uid = await resolveUid(request);
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get("project_id");
     if (!projectId) return NextResponse.json({ error: "project_id required" }, { status: 400 });
@@ -54,7 +46,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const uid = await getUid(request);
+    const uid = await resolveUid(request);
     const body = await request.json();
 
     const supabase = createClient();

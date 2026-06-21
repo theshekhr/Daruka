@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContextOS</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    width: 320px;
+    min-height: 200px;
+    background: #0C0C0F;
+    color: #E8E8F0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .logo {
+    width: 22px;
+    height: 22px;
+    background: #fff;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 11px;
+    color: #000;
+    flex-shrink: 0;
+  }
+  .header-title {
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: -0.2px;
+  }
+  .header-site {
+    margin-left: auto;
+    font-size: 10px;
+    color: #505050;
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(255,255,255,0.04);
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+
+  /* SCREENS */
+  .screen { display: none; padding: 16px; }
+  .screen.active { display: block; }
+
+  /* NOT CONNECTED SCREEN */
+  .connect-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin: 8px auto 14px;
+  }
+  .connect-title {
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  .connect-sub {
+    text-align: center;
+    color: #505050;
+    font-size: 12px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+  .token-input-label {
+    font-size: 11px;
+    color: #505050;
+    font-family: monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .token-input {
+    width: 100%;
+    background: #111116;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 7px;
+    padding: 9px 12px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #E8E8F0;
+    outline: none;
+    margin-bottom: 10px;
+    transition: border-color 0.15s;
+  }
+  .token-input:focus { border-color: rgba(255,255,255,0.25); }
+  .token-input::placeholder { color: #303040; }
+
+  /* BUTTONS */
+  .btn {
+    width: 100%;
+    padding: 9px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+  .btn-primary {
+    background: #fff;
+    color: #000;
+  }
+  .btn-primary:hover { background: #F0F0F0; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-ghost {
+    background: transparent;
+    color: #A0A0A0;
+    border: 1px solid rgba(255,255,255,0.1);
+    margin-top: 8px;
+  }
+  .btn-ghost:hover { border-color: rgba(255,255,255,0.2); color: #E8E8F0; }
+  .btn-danger {
+    background: transparent;
+    color: #F87171;
+    border: 1px solid rgba(248,113,113,0.2);
+    margin-top: 8px;
+  }
+  .btn-danger:hover { background: rgba(248,113,113,0.08); }
+
+  /* CONNECTED / MAIN SCREEN */
+  .section-label {
+    font-size: 10px;
+    font-family: monospace;
+    color: #505050;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .user-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 7px;
+    margin-bottom: 14px;
+  }
+  .user-avatar {
+    width: 26px;
+    height: 26px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .user-email {
+    font-size: 11px;
+    color: #A0A0A0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* PROJECT PICKER */
+  .project-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 14px;
+    max-height: 160px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+  .project-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.12s;
+  }
+  .project-item:hover {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.07);
+  }
+  .project-item.selected {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.15);
+  }
+  .project-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #505050;
+    flex-shrink: 0;
+  }
+  .project-item.selected .project-dot { background: #fff; }
+  .project-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #A0A0A0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .project-item.selected .project-name { color: #E8E8F0; }
+  .project-memory-count {
+    margin-left: auto;
+    font-size: 10px;
+    font-family: monospace;
+    color: #303040;
+  }
+
+  /* EMPTY / LOADING STATES */
+  .state-msg {
+    text-align: center;
+    color: #505050;
+    font-size: 12px;
+    padding: 20px 0;
+  }
+  .loading-dots {
+    display: inline-flex;
+    gap: 3px;
+  }
+  .loading-dots span {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #505050;
+    animation: blink 1.2s infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+  /* STATUS MESSAGE */
+  .status {
+    font-size: 11px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: none;
+  }
+  .status.show { display: block; }
+  .status.error {
+    background: rgba(248,113,113,0.1);
+    border: 1px solid rgba(248,113,113,0.2);
+    color: #F87171;
+  }
+  .status.success {
+    background: rgba(74,222,128,0.1);
+    border: 1px solid rgba(74,222,128,0.2);
+    color: #4ADE80;
+  }
+  .status.info {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #A0A0A0;
+  }
+
+  /* AI MODEL DISPLAY */
+  .ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    font-size: 11px;
+    color: #A0A0A0;
+    font-family: monospace;
+    margin-bottom: 14px;
+  }
+  .ai-badge-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+  }
+
+  /* DIVIDER */
+  hr {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    margin: 14px 0;
+  }
+
+  /* FOOTER LINK */
+  .footer-link {
+    text-align: center;
+    margin-top: 10px;
+  }
+  .footer-link a {
+    color: #505050;
+    font-size: 11px;
+    text-decoration: none;
+  }
+  .footer-link a:hover { color: #A0A0A0; }
+
+  /* SUCCESS SCREEN */
+  .success-icon {
+    width: 44px;
+    height: 44px;
+    background: rgba(74,222,128,0.1);
+    border: 1px solid rgba(74,222,128,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin: 12px auto 14px;
+  }
+  .success-title {
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 5px;
+  }
+  .success-sub {
+    text-align: center;
+    color: #505050;
+    font-size: 12px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+  .extracted-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .extracted-pill {
+    font-size: 10px;
+    font-family: monospace;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #505050;
+  }
+  .extracted-pill.has-data {
+    color: #A0A0A0;
+    border-color: rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.04);
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">C</div>
+  <span class="header-title">ContextOS</span>
+  <span class="header-site" id="site-badge">—</span>
+</div>
+
+<!-- SCREEN: NOT CONNECTED -->
+<div class="screen active" id="screen-connect">
+  <div class="connect-icon">🔑</div>
+  <div class="connect-title">Connect your account</div>
+  <div class="connect-sub">Paste your extension token from<br>ContextOS Settings → Extension token</div>
+  <label class="token-input-label">Extension token</label>
+  <input
+    type="password"
+    class="token-input"
+    id="token-input"
+    placeholder="ctx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    autocomplete="off"
+    spellcheck="false"
+  />
+  <div class="status" id="connect-status"></div>
+  <button class="btn btn-primary" id="connect-btn">Connect</button>
+  <div class="footer-link">
+    <a href="https://contextos-xi.vercel.app/settings" target="_blank">Get your token at contextos-xi.vercel.app →</a>
+  </div>
+</div>
+
+<!-- SCREEN: LOADING -->
+<div class="screen" id="screen-loading">
+  <div class="state-msg">
+    <div class="loading-dots">
+      <span></span><span></span><span></span>
+    </div>
+    <div style="margin-top:8px" id="loading-msg">Loading projects...</div>
+  </div>
+</div>
+
+<!-- SCREEN: MAIN — project picker + save -->
+<div class="screen" id="screen-main">
+  <div class="section-label">Signed in as</div>
+  <div class="user-row">
+    <div class="user-avatar" id="user-avatar">?</div>
+    <span class="user-email" id="user-email">—</span>
+  </div>
+
+  <div class="section-label">Conversation detected on</div>
+  <div class="ai-badge" id="ai-badge">
+    <span class="ai-badge-dot" id="ai-dot" style="background:#505050"></span>
+    <span id="ai-name">Unknown</span>
+  </div>
+
+  <div class="section-label">Save to project</div>
+  <div class="project-list" id="project-list">
+    <div class="state-msg">Loading projects...</div>
+  </div>
+
+  <div class="status" id="save-status"></div>
+
+  <button class="btn btn-primary" id="save-btn" disabled>
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 1v11M1 6.5h11"/></svg>
+    Add to memory
+  </button>
+  <button class="btn btn-ghost" id="disconnect-btn">Disconnect account</button>
+</div>
+
+<!-- SCREEN: SUCCESS -->
+<div class="screen" id="screen-success">
+  <div class="success-icon">✓</div>
+  <div class="success-title">Saved to memory</div>
+  <div class="success-sub" id="success-project-name">Added to your project</div>
+  <div class="extracted-pills" id="extracted-pills"></div>
+  <button class="btn btn-primary" id="view-btn">View in ContextOS →</button>
+  <button class="btn btn-ghost" id="save-another-btn">Save another</button>
+</div>
+
+<!-- SCREEN: UNSUPPORTED SITE -->
+<div class="screen" id="screen-unsupported">
+  <div class="connect-icon">🌐</div>
+  <div class="connect-title">Unsupported site</div>
+  <div class="connect-sub">ContextOS currently captures conversations from<br><strong style="color:#A0A0A0">chat.openai.com</strong> and <strong style="color:#A0A0A0">claude.ai</strong></div>
+  <div class="footer-link" style="margin-top:4px">
+    <a href="https://contextos-xi.vercel.app/dashboard" target="_blank">Open ContextOS dashboard →</a>
+  </div>
+</div>
+
+<!-- SCREEN: NO KEY -->
+<div class="screen" id="screen-nokey">
+  <div class="connect-icon">⚙️</div>
+  <div class="connect-title">Gemini key required</div>
+  <div class="connect-sub">Add your Gemini API key in ContextOS Settings before saving memories.</div>
+  <button class="btn btn-primary" id="settings-btn" style="margin-top:4px">Open Settings →</button>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
