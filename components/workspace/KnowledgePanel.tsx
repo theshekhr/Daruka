@@ -53,7 +53,7 @@ export default function KnowledgePanel({
       <div className="flex-1 overflow-y-auto p-2.5">
         {totalFacts === 0 ? (
           <p className="px-2 py-2 text-[12px] leading-relaxed text-[var(--text3)]">
-            Nothing here yet. As you save AI sessions, ContextOS will build up the
+            Nothing here yet. As you save AI sessions, Daruka will build up the
             project&apos;s purpose, stack, decisions, and progress automatically.
           </p>
         ) : (

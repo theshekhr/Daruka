@@ -126,7 +126,7 @@ export default function AppSidebar() {
         <button onClick={() => router.push("/dashboard")} className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <span className="text-sm font-semibold tracking-tight text-[var(--text)]">
-            Context<span className="text-[var(--text3)]">OS</span>
+            Daruka
           </span>
         </button>
       </div>

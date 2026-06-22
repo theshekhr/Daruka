@@ -163,7 +163,7 @@ export default function SettingsPage() {
         <div className="mt-5 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] p-5">
           <h2 className="text-[14px] font-semibold text-[var(--text)]">AI providers</h2>
           <p className="mt-1 text-[12px] leading-relaxed text-[var(--text2)]">
-            Add keys for one or both providers. ContextOS tries your preferred provider first and
+            Add keys for one or both providers. Daruka tries your preferred provider first and
             automatically falls back to the other, then to a rule-based extractor, if a request
             fails or hits a rate limit \u2014 saving a memory never fails outright.
           </p>
@@ -305,7 +305,7 @@ export default function SettingsPage() {
 
               {!hasAnyKey && (
                 <p className="mt-4 rounded-md border border-[var(--border)] bg-[var(--bg3)] px-3 py-2.5 text-[12px] leading-relaxed text-[var(--text3)]">
-                  No keys added yet \u2014 ContextOS will use rule-based extraction (no AI) until you add one.
+                  No keys added yet \u2014 Daruka will use rule-based extraction (no AI) until you add one.
                   It still works, just with simpler, keyword-based extraction instead of true understanding.
                 </p>
               )}
@@ -316,10 +316,10 @@ export default function SettingsPage() {
         <div className="mt-5 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] p-5">
           <h2 className="text-[14px] font-semibold text-[var(--text)]">Browser extension</h2>
           <p className="mt-1 text-[12px] leading-relaxed text-[var(--text2)]">
-            Generate a token to connect the ContextOS browser extension to your account. Paste it
+            Generate a token to connect the Daruka browser extension to your account. Paste it
             into the extension once \u2014 it stays valid until you revoke it here.
           </p>
-          <a href="https://contextos.web.app/extension.zip">Download Extension here (BETA)</a><br></br>
+          <a href="https://Daruka.web.app/extension.zip">Download Extension here (BETA)</a><br></br>
 
           {extensionToken ? (
             <div className="mt-4">

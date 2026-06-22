@@ -56,7 +56,7 @@ export default function LoginPage() {
             <span className="text-sm font-bold text-[var(--text)]">C</span>
           </div>
           <span className="text-[15px] font-semibold tracking-tight text-[var(--text)]">
-            ContextOS
+            Daruka
           </span>
         </div>
 

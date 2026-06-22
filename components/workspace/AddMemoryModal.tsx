@@ -53,7 +53,7 @@ export default function AddMemoryModal({
           <div>
             <h2 className="text-[15px] font-semibold text-[var(--text)]">Add memory manually</h2>
             <p className="mt-0.5 text-[12px] text-[var(--text2)]">
-              Paste a conversation. ContextOS will extract decisions, features, bugs, and more.
+              Paste a conversation. Daruka will extract decisions, features, bugs, and more.
             </p>
           </div>
           <button

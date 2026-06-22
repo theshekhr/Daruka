@@ -67,7 +67,7 @@ export default function Timeline({ memories }: { memories: MemoryBlockType[] }) 
         {filtered.length === 0 && (
           <p className="text-[13px] text-[var(--text3)]">
             {memories.length === 0
-              ? "No memories yet. Use an AI tool above, then save the conversation with the ContextOS extension."
+              ? "No memories yet. Use an AI tool above, then save the conversation with the Daruka extension."
               : "No memories match your search or filter."}
           </p>
         )}
