@@ -53,7 +53,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-[10px] border border-[var(--border2)] bg-[var(--bg2)] p-8">
         <div className="flex items-center gap-2.5">
           <div className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--border2)] bg-[var(--bg4)]">
-            <span className="text-sm font-bold text-[var(--text)]">C</span>
+            <span className="text-sm font-bold text-[var(--text)]">D</span>
           </div>
           <span className="text-[15px] font-semibold tracking-tight text-[var(--text)]">
             Daruka

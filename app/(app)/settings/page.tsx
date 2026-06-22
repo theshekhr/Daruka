@@ -320,6 +320,7 @@ export default function SettingsPage() {
             into the extension once \u2014 it stays valid until you revoke it here.
           </p>
           <a href="https://Daruka.web.app/extension.zip">Download Extension here (BETA)</a><br></br>
+          <p className="mt-1 text-[12px] leading-relaxed text-[var(--text2)]">Go to your browser's extension page and turn on Developer option then click on "Load unpacked" and select the extension folder.</p>
 
           {extensionToken ? (
             <div className="mt-4">
