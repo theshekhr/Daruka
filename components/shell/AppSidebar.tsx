@@ -125,7 +125,7 @@ export default function AppSidebar() {
       <div className="flex items-center gap-2.5 border-b border-[var(--border)] px-4 py-3.5">
         <button onClick={() => router.push("/dashboard")} className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-mark.png" alt="ContextOS" className="h-[26px] w-[26px] flex-shrink-0" />
+          <img src="https://contextos.web.app/img/Mark%20@%2032px.png" alt="ContextOS" className="h-[26px] w-[26px] flex-shrink-0" />
           <span className="text-sm font-semibold tracking-tight text-[var(--text)]">
             Context<span className="text-[var(--text3)]">OS</span>
           </span>
