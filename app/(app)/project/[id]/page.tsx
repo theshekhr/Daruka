@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { apiGet } from "@/lib/api-client";
 import AILauncher from "@/components/workspace/AILauncher";
 import Timeline from "@/components/workspace/Timeline";
+import GraphView from "@/components/workspace/GraphView";
 import KnowledgePanel from "@/components/workspace/KnowledgePanel";
 import ResizablePanel from "@/components/workspace/ResizablePanel";
 import SwitchContextModal from "@/components/workspace/SwitchContextModal";
@@ -22,6 +23,7 @@ export default function ProjectWorkspacePage() {
   const [error, setError] = useState("");
   const [showSwitchContext, setShowSwitchContext] = useState(false);
   const [showAddMemory, setShowAddMemory] = useState(false);
+  const [view, setView] = useState<"timeline" | "graph">("timeline");
 
   async function loadKnowledge() {
     try {
@@ -93,6 +95,26 @@ export default function ProjectWorkspacePage() {
               </p>
             )}
           </div>
+
+          <div className="flex flex-shrink-0 items-center rounded-md border border-[var(--border)] bg-[var(--bg3)] p-[3px]">
+            <button
+              onClick={() => setView("timeline")}
+              className={`rounded-[4px] px-2.5 py-1 text-[11px] font-medium transition ${
+                view === "timeline" ? "bg-[var(--bg4)] text-[var(--text)]" : "text-[var(--text3)]"
+              }`}
+            >
+              Timeline
+            </button>
+            <button
+              onClick={() => setView("graph")}
+              className={`rounded-[4px] px-2.5 py-1 text-[11px] font-medium transition ${
+                view === "graph" ? "bg-[var(--bg4)] text-[var(--text)]" : "text-[var(--text3)]"
+              }`}
+            >
+              Graph
+            </button>
+          </div>
+
           <div className="flex flex-shrink-0 items-center gap-1.5">
             <button
               onClick={() => setShowAddMemory(true)}
@@ -117,12 +139,18 @@ export default function ProjectWorkspacePage() {
           </div>
         </div>
 
-        <div className="flex-shrink-0 border-b border-[var(--border)] px-5 py-2.5">
-          <AILauncher />
-        </div>
+        {view === "timeline" && (
+          <div className="flex-shrink-0 border-b border-[var(--border)] px-5 py-2.5">
+            <AILauncher />
+          </div>
+        )}
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          <Timeline memories={memories} />
+        <div className={view === "timeline" ? "flex-1 overflow-y-auto px-5 py-4" : "flex-1 overflow-hidden"}>
+          {view === "timeline" ? (
+            <Timeline memories={memories} />
+          ) : (
+            <GraphView memories={memories} knowledge={knowledge?.data || null} />
+          )}
         </div>
       </div>
 

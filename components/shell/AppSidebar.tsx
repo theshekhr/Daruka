@@ -125,7 +125,7 @@ export default function AppSidebar() {
       <div className="flex items-center gap-2.5 border-b border-[var(--border)] px-4 py-3.5">
         <button onClick={() => router.push("/dashboard")} className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="https://contextos.web.app/img/Mark%20@%2032px.png" alt="ContextOS" className="h-[26px] w-[26px] flex-shrink-0" />
+          <img src="/logo-mark.png" alt="ContextOS" className="h-[26px] w-[26px] flex-shrink-0" />
           <span className="text-sm font-semibold tracking-tight text-[var(--text)]">
             Context<span className="text-[var(--text3)]">OS</span>
           </span>
@@ -157,9 +157,18 @@ export default function AppSidebar() {
                     className="w-full rounded-md border border-[var(--accent)] bg-[var(--bg3)] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none"
                   />
                 ) : (
-                  <button
+                  // NOTE: this is a <div role="button"> rather than a real <button>
+                  // because it contains a nested, independently-clickable "..." button
+                  // for the project menu. Nesting <button> inside <button> is invalid
+                  // HTML and causes a React hydration error.
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => router.push(`/project/${project.id}`)}
-                    className={`relative flex w-full items-center gap-2 rounded-md px-2.5 py-[7px] text-[13px] transition ${
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") router.push(`/project/${project.id}`);
+                    }}
+                    className={`relative flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-[7px] text-[13px] transition ${
                       isActive
                         ? "bg-[var(--bg3)] text-[var(--text)]"
                         : "text-[var(--text2)] hover:bg-[var(--bg3)] hover:text-[var(--text)]"
@@ -183,7 +192,7 @@ export default function AppSidebar() {
                         <circle cx="8" cy="13" r="1.3" />
                       </svg>
                     </button>
-                  </button>
+                  </div>
                 )}
 
                 {menuOpenId === project.id && (

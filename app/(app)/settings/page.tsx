@@ -1,41 +1,40 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
+
+type ProviderName = "gemini" | "groq";
 
 export default function SettingsPage() {
   const { user } = useAuth();
 
-  // ── Gemini key state ──
-  const [hasKey, setHasKey] = useState(false);
-  const [maskedKey, setMaskedKey] = useState<string | null>(null);
-  const [newKey, setNewKey] = useState("");
+  const [preferredProvider, setPreferredProvider] = useState<ProviderName>("gemini");
+  const [hasGeminiKey, setHasGeminiKey] = useState(false);
+  const [maskedGeminiKey, setMaskedGeminiKey] = useState<string | null>(null);
+  const [hasGroqKey, setHasGroqKey] = useState(false);
+  const [maskedGroqKey, setMaskedGroqKey] = useState<string | null>(null);
+
+  const [newGeminiKey, setNewGeminiKey] = useState("");
+  const [newGroqKey, setNewGroqKey] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [keyError, setKeyError] = useState("");
-  const [keySuccess, setKeySuccess] = useState("");
+  const [savingGemini, setSavingGemini] = useState(false);
+  const [savingGroq, setSavingGroq] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  // ── Extension token state ──
-  const [tokenLoading, setTokenLoading] = useState(true);
-  const [existingToken, setExistingToken] = useState<string | null>(null); // masked
-  const [generatedToken, setGeneratedToken] = useState<string | null>(null); // full, shown once
-  const [tokenGenerating, setTokenGenerating] = useState(false);
-  const [tokenRevoking, setTokenRevoking] = useState(false);
+  const [extensionToken, setExtensionToken] = useState<string | null>(null);
+  const [generatingToken, setGeneratingToken] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
-  const [tokenError, setTokenError] = useState("");
 
-  // ── Load both on mount ──
-  useEffect(() => {
-    loadGeminiKey();
-    loadExtensionToken();
-  }, []);
-
-  async function loadGeminiKey() {
+  async function load() {
     try {
       const data = await apiGet("/api/settings");
-      setHasKey(data.hasKey);
-      setMaskedKey(data.maskedKey);
+      setPreferredProvider(data.preferredProvider || "gemini");
+      setHasGeminiKey(data.hasGeminiKey);
+      setMaskedGeminiKey(data.maskedGeminiKey);
+      setHasGroqKey(data.hasGroqKey);
+      setMaskedGroqKey(data.maskedGroqKey);
     } catch {
       // leave defaults
     } finally {
@@ -43,104 +42,105 @@ export default function SettingsPage() {
     }
   }
 
-  async function loadExtensionToken() {
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function handlePreferredChange(provider: ProviderName) {
+    setPreferredProvider(provider);
     try {
-      const data = await apiGet("/api/extension-token");
-      setExistingToken(data.hasToken ? data.maskedToken : null);
+      await apiPatch("/api/settings", { preferredProvider: provider });
     } catch {
-      setExistingToken(null);
-    } finally {
-      setTokenLoading(false);
+      // non-critical, silently ignore
     }
   }
 
-  // ── Gemini key handlers ──
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newKey.trim()) return;
-    setSaving(true);
-    setKeyError("");
-    setKeySuccess("");
+  async function handleSaveKey(provider: ProviderName) {
+    const key = provider === "groq" ? newGroqKey : newGeminiKey;
+    if (!key.trim()) return;
+
+    if (provider === "groq") setSavingGroq(true);
+    else setSavingGemini(true);
+    setError("");
+    setSuccess("");
+
     try {
-      const data = await apiPost("/api/settings", { apiKey: newKey.trim() });
-      setHasKey(data.hasKey);
-      setMaskedKey(data.maskedKey);
-      setNewKey("");
-      setKeySuccess("API key saved and verified.");
+      const data = await apiPost("/api/settings", { provider, apiKey: key.trim() });
+      if (provider === "groq") {
+        setHasGroqKey(true);
+        setMaskedGroqKey(data.maskedKey);
+        setNewGroqKey("");
+      } else {
+        setHasGeminiKey(true);
+        setMaskedGeminiKey(data.maskedKey);
+        setNewGeminiKey("");
+      }
+      setSuccess(`${provider === "groq" ? "Groq" : "Gemini"} key saved and verified.`);
     } catch (err) {
-      setKeyError(err instanceof Error ? err.message : "Failed to save key");
+      setError(err instanceof Error ? err.message : "Failed to save key");
     } finally {
-      setSaving(false);
+      setSavingGemini(false);
+      setSavingGroq(false);
     }
   }
 
-  async function handleRemoveKey() {
-    if (!confirm("Remove your Gemini API key? AI features will stop working until you add a new one.")) return;
-    setSaving(true);
-    setKeyError("");
-    setKeySuccess("");
+  async function handleRemoveKey(provider: ProviderName) {
+    if (!confirm(`Remove your ${provider === "groq" ? "Groq" : "Gemini"} key?`)) return;
     try {
-      await apiDelete("/api/settings");
-      setHasKey(false);
-      setMaskedKey(null);
-      setKeySuccess("API key removed.");
+      await apiDelete(`/api/settings?provider=${provider}`);
+      if (provider === "groq") {
+        setHasGroqKey(false);
+        setMaskedGroqKey(null);
+      } else {
+        setHasGeminiKey(false);
+        setMaskedGeminiKey(null);
+      }
     } catch (err) {
-      setKeyError(err instanceof Error ? err.message : "Failed to remove key");
-    } finally {
-      setSaving(false);
+      setError(err instanceof Error ? err.message : "Failed to remove key");
     }
   }
 
-  // ── Extension token handlers ──
   async function handleGenerateToken() {
-    setTokenGenerating(true);
-    setTokenError("");
-    setGeneratedToken(null);
+    setGeneratingToken(true);
     try {
       const data = await apiPost("/api/extension-token", {});
-      setGeneratedToken(data.token); // full token shown once
-      setExistingToken(data.maskedToken);
+      setExtensionToken(data.token);
     } catch (err) {
-      setTokenError(err instanceof Error ? err.message : "Failed to generate token");
+      alert(err instanceof Error ? err.message : "Failed to generate token");
     } finally {
-      setTokenGenerating(false);
+      setGeneratingToken(false);
     }
   }
 
   async function handleRevokeToken() {
-    if (!confirm("Revoke this token? The Chrome extension will be disconnected immediately.")) return;
-    setTokenRevoking(true);
-    setTokenError("");
+    if (!confirm("Revoke the extension token? The browser extension will stop working until you generate a new one.")) return;
     try {
       await apiDelete("/api/extension-token");
-      setExistingToken(null);
-      setGeneratedToken(null);
+      setExtensionToken(null);
     } catch (err) {
-      setTokenError(err instanceof Error ? err.message : "Failed to revoke token");
-    } finally {
-      setTokenRevoking(false);
+      alert(err instanceof Error ? err.message : "Failed to revoke token");
     }
   }
 
-  async function handleCopyToken() {
-    if (!generatedToken) return;
-    await navigator.clipboard.writeText(generatedToken);
+  async function copyToken() {
+    if (!extensionToken) return;
+    await navigator.clipboard.writeText(extensionToken);
     setTokenCopied(true);
     setTimeout(() => setTokenCopied(false), 2000);
   }
+
+  const hasAnyKey = hasGeminiKey || hasGroqKey;
 
   return (
     <div className="h-full w-full overflow-y-auto bg-[var(--bg)]">
       <div className="border-b border-[var(--border)] px-6 py-4">
         <h1 className="text-[15px] font-semibold text-[var(--text)]">Settings</h1>
         <p className="mt-0.5 text-[12px] text-[var(--text3)]">
-          Manage your account and AI provider keys
+          Manage your account, AI provider keys, and browser extension
         </p>
       </div>
 
-      <div className="mx-auto max-w-xl px-6 py-6 flex flex-col gap-5">
-
-        {/* ── ACCOUNT ── */}
+      <div className="mx-auto max-w-xl px-6 py-6">
         <div className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] p-5">
           <div className="flex items-center gap-3">
             {user?.photoURL ? (
@@ -160,171 +160,199 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ── GEMINI API KEY ── */}
-        <div className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] p-5">
-          <h2 className="text-[14px] font-semibold text-[var(--text)]">Gemini API key</h2>
+        <div className="mt-5 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] p-5">
+          <h2 className="text-[14px] font-semibold text-[var(--text)]">AI providers</h2>
           <p className="mt-1 text-[12px] leading-relaxed text-[var(--text2)]">
-            ContextOS uses your own Google Gemini API key to extract knowledge from conversations
-            and generate context documents. Your key is encrypted before storage and never shared.{" "}
-            <a
-              href="https://aistudio.google.com/apikey"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--text)] underline"
-            >
-              Get a free key from Google AI Studio →
-            </a>
+            Add keys for one or both providers. ContextOS tries your preferred provider first and
+            automatically falls back to the other, then to a rule-based extractor, if a request
+            fails or hits a rate limit \u2014 saving a memory never fails outright.
           </p>
 
           {loading ? (
             <p className="mt-4 text-[12px] text-[var(--text3)]">Loading...</p>
           ) : (
             <>
-              {hasKey && (
-                <div className="mt-4 flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--bg3)] px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: "var(--green)" }} />
-                    <span className="font-mono text-[12px] text-[var(--text2)]">{maskedKey}</span>
+              {hasAnyKey && (
+                <div className="mt-4">
+                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-[var(--text3)]">
+                    Preferred provider
+                  </label>
+                  <div className="flex rounded-md border border-[var(--border)] bg-[var(--bg3)] p-1">
+                    <button
+                      onClick={() => handlePreferredChange("gemini")}
+                      className={`flex-1 rounded-[5px] py-1.5 text-[12px] font-medium transition ${
+                        preferredProvider === "gemini"
+                          ? "bg-[var(--bg4)] text-[var(--text)]"
+                          : "text-[var(--text3)]"
+                      }`}
+                    >
+                      Gemini
+                    </button>
+                    <button
+                      onClick={() => handlePreferredChange("groq")}
+                      className={`flex-1 rounded-[5px] py-1.5 text-[12px] font-medium transition ${
+                        preferredProvider === "groq"
+                          ? "bg-[var(--bg4)] text-[var(--text)]"
+                          : "text-[var(--text3)]"
+                      }`}
+                    >
+                      Groq
+                    </button>
                   </div>
-                  <button
-                    onClick={handleRemoveKey}
-                    disabled={saving}
-                    className="text-[12px] text-[var(--red)] hover:underline disabled:opacity-50"
-                  >
-                    Remove
-                  </button>
                 </div>
               )}
 
-              <form onSubmit={handleSave} className="mt-4 flex flex-col gap-2.5">
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text3)]">
-                  {hasKey ? "Replace key" : "Add your API key"}
-                </label>
-                <div className="flex gap-2">
+              {/* Gemini key */}
+              <div className="mt-4 border-t border-[var(--border)] pt-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-[12px] font-medium text-[var(--text)]">
+                    Gemini API key
+                  </label>
+                  <a
+                    href="https://aistudio.google.com/apikey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-[var(--text3)] underline hover:text-[var(--text2)]"
+                  >
+                    Get a key
+                  </a>
+                </div>
+
+                {hasGeminiKey && (
+                  <div className="mt-2 flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--bg3)] px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: "var(--green)" }} />
+                      <span className="font-mono text-[12px] text-[var(--text2)]">{maskedGeminiKey}</span>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveKey("gemini")}
+                      className="text-[12px] text-[var(--red)] hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                <div className="mt-2 flex gap-2">
                   <input
                     type="password"
-                    value={newKey}
-                    onChange={(e) => setNewKey(e.target.value)}
+                    value={newGeminiKey}
+                    onChange={(e) => setNewGeminiKey(e.target.value)}
                     placeholder="AIza..."
                     className="flex-1 rounded-md border border-[var(--border)] bg-[var(--bg3)] px-3 py-2 font-mono text-[12px] text-[var(--text)] outline-none placeholder:text-[var(--text3)] focus:border-[var(--border2)]"
                   />
                   <button
-                    type="submit"
-                    disabled={saving || !newKey.trim()}
+                    onClick={() => handleSaveKey("gemini")}
+                    disabled={savingGemini || !newGeminiKey.trim()}
                     className="flex-shrink-0 rounded-md bg-[var(--accent)] px-4 py-2 text-[12px] font-semibold text-[var(--bg)] hover:opacity-90 disabled:opacity-50"
                   >
-                    {saving ? "Testing..." : "Save & test"}
+                    {savingGemini ? "Testing..." : hasGeminiKey ? "Replace" : "Save"}
                   </button>
                 </div>
-                {keyError && <p className="text-[12px] text-[var(--red)]">{keyError}</p>}
-                {keySuccess && <p className="text-[12px]" style={{ color: "var(--green)" }}>{keySuccess}</p>}
-              </form>
+              </div>
+
+              {/* Groq key */}
+              <div className="mt-4 border-t border-[var(--border)] pt-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-[12px] font-medium text-[var(--text)]">
+                    Groq API key
+                  </label>
+                  <a
+                    href="https://console.groq.com/keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-[var(--text3)] underline hover:text-[var(--text2)]"
+                  >
+                    Get a key
+                  </a>
+                </div>
+
+                {hasGroqKey && (
+                  <div className="mt-2 flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--bg3)] px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: "var(--green)" }} />
+                      <span className="font-mono text-[12px] text-[var(--text2)]">{maskedGroqKey}</span>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveKey("groq")}
+                      className="text-[12px] text-[var(--red)] hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                <div className="mt-2 flex gap-2">
+                  <input
+                    type="password"
+                    value={newGroqKey}
+                    onChange={(e) => setNewGroqKey(e.target.value)}
+                    placeholder="gsk_..."
+                    className="flex-1 rounded-md border border-[var(--border)] bg-[var(--bg3)] px-3 py-2 font-mono text-[12px] text-[var(--text)] outline-none placeholder:text-[var(--text3)] focus:border-[var(--border2)]"
+                  />
+                  <button
+                    onClick={() => handleSaveKey("groq")}
+                    disabled={savingGroq || !newGroqKey.trim()}
+                    className="flex-shrink-0 rounded-md bg-[var(--accent)] px-4 py-2 text-[12px] font-semibold text-[var(--bg)] hover:opacity-90 disabled:opacity-50"
+                  >
+                    {savingGroq ? "Testing..." : hasGroqKey ? "Replace" : "Save"}
+                  </button>
+                </div>
+              </div>
+
+              {error && <p className="mt-3 text-[12px] text-[var(--red)]">{error}</p>}
+              {success && <p className="mt-3 text-[12px]" style={{ color: "var(--green)" }}>{success}</p>}
+
+              {!hasAnyKey && (
+                <p className="mt-4 rounded-md border border-[var(--border)] bg-[var(--bg3)] px-3 py-2.5 text-[12px] leading-relaxed text-[var(--text3)]">
+                  No keys added yet \u2014 ContextOS will use rule-based extraction (no AI) until you add one.
+                  It still works, just with simpler, keyword-based extraction instead of true understanding.
+                </p>
+              )}
             </>
           )}
         </div>
 
-        {/* ── EXTENSION TOKEN ── */}
-        <div className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] p-5">
-          <h2 className="text-[14px] font-semibold text-[var(--text)]">Chrome extension token</h2>
+        <div className="mt-5 rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] p-5">
+          <h2 className="text-[14px] font-semibold text-[var(--text)]">Browser extension</h2>
           <p className="mt-1 text-[12px] leading-relaxed text-[var(--text2)]">
-            Generate a long-lived token to connect the ContextOS Chrome extension to your account.
-            Paste it into the extension once — it never expires unless you revoke it.
+            Generate a token to connect the ContextOS browser extension to your account. Paste it
+            into the extension once \u2014 it stays valid until you revoke it here.
           </p>
 
-          {tokenLoading ? (
-            <p className="mt-4 text-[12px] text-[var(--text3)]">Loading...</p>
-          ) : (
-            <div className="mt-4 flex flex-col gap-3">
-
-              {/* Show existing token (masked) */}
-              {existingToken && !generatedToken && (
-                <div className="flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--bg3)] px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: "var(--green)" }} />
-                    <span className="font-mono text-[12px] text-[var(--text2)]">{existingToken}</span>
-                  </div>
-                  <span className="text-[11px] text-[var(--text3)]">Active</span>
-                </div>
-              )}
-
-              {/* Show newly generated token — one time only */}
-              {generatedToken && (
-                <div className="rounded-md border border-[var(--border2)] bg-[var(--bg3)] p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text3)]">
-                      Your token — copy it now, it won&apos;t be shown again
-                    </span>
-                    <button
-                      onClick={handleCopyToken}
-                      className="text-[11px] font-medium text-[var(--text)] underline hover:no-underline"
-                    >
-                      {tokenCopied ? "✓ Copied!" : "Copy"}
-                    </button>
-                  </div>
-                  <div
-                    className="cursor-pointer rounded border border-[var(--border)] bg-[var(--bg4)] px-3 py-2 font-mono text-[11px] text-[var(--text2)] break-all select-all"
-                    onClick={handleCopyToken}
-                  >
-                    {generatedToken}
-                  </div>
-                  <p className="mt-2 text-[11px] text-[var(--text3)]">
-                    Paste this into the ContextOS Chrome extension → &quot;Connect your account&quot;
-                  </p>
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div className="flex gap-2">
+          {extensionToken ? (
+            <div className="mt-4">
+              <div className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg3)] px-3 py-2.5">
+                <span className="flex-1 truncate font-mono text-[11px] text-[var(--text2)]">
+                  {extensionToken}
+                </span>
                 <button
-                  onClick={handleGenerateToken}
-                  disabled={tokenGenerating}
-                  className="rounded-md bg-[var(--accent)] px-4 py-2 text-[12px] font-semibold text-[var(--bg)] hover:opacity-90 disabled:opacity-50"
+                  onClick={copyToken}
+                  className="flex-shrink-0 rounded-md bg-[var(--accent)] px-2.5 py-1 text-[11px] font-semibold text-[var(--bg)] hover:opacity-90"
                 >
-                  {tokenGenerating
-                    ? "Generating..."
-                    : existingToken
-                    ? "Regenerate token"
-                    : "Generate token"}
+                  {tokenCopied ? "Copied!" : "Copy"}
                 </button>
-                {existingToken && (
-                  <button
-                    onClick={handleRevokeToken}
-                    disabled={tokenRevoking}
-                    className="rounded-md border border-[var(--border)] px-4 py-2 text-[12px] font-medium text-[var(--red)] hover:bg-[var(--bg3)] disabled:opacity-50"
-                  >
-                    {tokenRevoking ? "Revoking..." : "Revoke"}
-                  </button>
-                )}
               </div>
-
-              {tokenError && (
-                <p className="text-[12px] text-[var(--red)]">{tokenError}</p>
-              )}
-
-              {/* How to use */}
-              <div className="rounded-md border border-[var(--border)] bg-[var(--bg3)] px-3 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text3)] mb-2">
-                  How to connect the extension
-                </p>
-                <ol className="flex flex-col gap-1.5">
-                  {[
-                    "Download and install the ContextOS Chrome extension",
-                    "Click the extension icon while on ChatGPT or Claude",
-                    'Paste your token into the "Extension token" field',
-                    "Click Connect — you're done",
-                  ].map((step, i) => (
-                    <li key={i} className="flex items-start gap-2 text-[11px] text-[var(--text2)]">
-                      <span className="font-mono text-[var(--text3)] flex-shrink-0">{i + 1}.</span>
-                      {step}
-                    </li>
-                  ))}
-                </ol>
-              </div>
-
+              <p className="mt-2 text-[11px] text-[var(--amber)]">
+                Copy this now \u2014 it won&apos;t be shown again.
+              </p>
+              <button
+                onClick={handleRevokeToken}
+                className="mt-3 text-[12px] text-[var(--red)] hover:underline"
+              >
+                Revoke this token
+              </button>
             </div>
+          ) : (
+            <button
+              onClick={handleGenerateToken}
+              disabled={generatingToken}
+              className="mt-4 rounded-md border border-[var(--border2)] px-3.5 py-2 text-[12px] font-medium text-[var(--text)] hover:bg-[var(--bg3)] disabled:opacity-50"
+            >
+              {generatingToken ? "Generating..." : "Generate extension token"}
+            </button>
           )}
         </div>
-
       </div>
     </div>
   );
