@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, FILES_BUCKET, getFileType } from "@/lib/supabase-admin";
 
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
@@ -9,6 +11,13 @@ export async function POST(req: NextRequest) {
 
   if (!file || !projectId) {
     return NextResponse.json({ error: "file and project_id are required" }, { status: 400 });
+  }
+
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return NextResponse.json(
+      { error: "FILE_TOO_LARGE", message: "Files bigger than 5MB are not allowed in this Beta version of the app." },
+      { status: 413 }
+    );
   }
 
   const fileType = getFileType(file.name);

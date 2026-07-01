@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { MemoryBlock as MemoryBlockType } from "@/lib/types";
 import ConfirmDialog from "@/components/workspace/ConfirmDialog";
+import { apiPost } from "@/lib/api-client";
 
 const CATEGORY_STYLES: Record<string, { label: string; bg: string; text: string; border: string }> = {
   decisions: { label: "decision", bg: "rgba(255,255,255,0.04)", text: "#888888", border: "rgba(255,255,255,0.08)" },
@@ -27,6 +28,8 @@ export default function MemoryBlock({
   const [expanded, setExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   const activeCategories = Object.entries(CATEGORY_STYLES).filter(
     ([key]) => memory.extracted_data?.[key as keyof typeof memory.extracted_data]?.length > 0
@@ -46,6 +49,20 @@ export default function MemoryBlock({
       setDeleting(false);
     }
   }
+  async function handleSyncFiles(e: React.MouseEvent) {
+  e.stopPropagation();
+  setSyncing(true);
+  setSyncResult(null);
+  try {
+    const res = await apiPost(`/api/memories/${memory.id}/sync`, {});
+    setSyncResult(res.synced > 0 ? `Synced ${res.synced} file(s)` : "No code files detected");
+  } catch (err) {
+    setSyncResult("Sync failed");
+  } finally {
+    setSyncing(false);
+    setTimeout(() => setSyncResult(null), 4000);
+  }
+}
 
   function toggleExpanded() {
     setExpanded((e) => !e);
@@ -121,6 +138,16 @@ export default function MemoryBlock({
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
             Extracted knowledge
           </p>
+          <div className="mb-3 flex items-center gap-2">
+  <button
+    onClick={handleSyncFiles}
+    disabled={syncing}
+    className="rounded-[4px] border border-[var(--border2)] px-2.5 py-1 text-[11px] font-medium text-[var(--text2)] transition hover:bg-[var(--bg3)] hover:text-[var(--text)] disabled:opacity-50"
+  >
+    {syncing ? "Syncing..." : "Sync to Files"}
+  </button>
+  {syncResult && <span className="text-[11px] text-[var(--text3)]">{syncResult}</span>}
+</div>
           {activeCategories.map(([key, style]) => {
             const items = memory.extracted_data[key as keyof typeof memory.extracted_data];
             return (

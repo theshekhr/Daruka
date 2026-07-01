@@ -9,6 +9,7 @@ type ConfirmDialogProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
+  alertOnly?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -20,6 +21,7 @@ export default function ConfirmDialog({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   danger = false,
+  alertOnly = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -48,12 +50,14 @@ export default function ConfirmDialog({
         <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--text2)]">{message}</p>
 
         <div className="mt-5 flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="rounded-md border border-[var(--border)] px-3.5 py-1.5 text-[12px] font-medium text-[var(--text2)] transition hover:border-[var(--border2)] hover:bg-[var(--bg3)] hover:text-[var(--text)]"
-          >
-            {cancelLabel}
-          </button>
+          {!alertOnly && (
+            <button
+              onClick={onCancel}
+              className="rounded-md border border-[var(--border)] px-3.5 py-1.5 text-[12px] font-medium text-[var(--text2)] transition hover:border-[var(--border2)] hover:bg-[var(--bg3)] hover:text-[var(--text)]"
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             onClick={onConfirm}
             className={`rounded-md px-3.5 py-1.5 text-[12px] font-medium transition ${

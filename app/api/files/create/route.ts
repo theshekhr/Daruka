@@ -3,10 +3,11 @@ import { supabaseAdmin, FILES_BUCKET, getFileType } from "@/lib/supabase-admin";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { project_id, name, user_id } = body as {
+  const { project_id, name, user_id, folder_id } = body as {
     project_id?: string;
     name?: string;
     user_id?: string;
+    folder_id?: string | null;
   };
 
   if (!project_id || !name || !name.trim()) {
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
       file_type: fileType,
       mime_type: "text/plain",
       size_bytes: 0,
+      folder_id: folder_id || null,
     })
     .select()
     .single();
