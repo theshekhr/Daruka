@@ -11,10 +11,10 @@ import KnowledgePanel from "@/components/workspace/KnowledgePanel";
 import ResizablePanel from "@/components/workspace/ResizablePanel";
 import SwitchContextModal from "@/components/workspace/SwitchContextModal";
 import AddMemoryModal from "@/components/workspace/AddMemoryModal";
+import FilesTab from "@/components/workspace/FilesTab";
 import type { Project, MemoryBlock, KnowledgeGraph } from "@/lib/types";
 
-type ViewMode = "timeline" | "graph" | "chat";
-
+type ViewMode = "timeline" | "graph" | "chat" | "files";
 export default function ProjectWorkspacePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -129,6 +129,14 @@ export default function ProjectWorkspacePage() {
             >
               Chat
             </button>
+            <button
+              onClick={() => setView("files")}
+              className={`rounded-[4px] px-2.5 py-1 text-[11px] font-medium transition ${
+                view === "files" ? "bg-[var(--bg4)] text-[var(--text)]" : "text-[var(--text3)]"
+              }`}
+            >
+              Files
+            </button>
           </div>
 
           <div className="flex flex-shrink-0 items-center gap-1.5">
@@ -177,6 +185,7 @@ export default function ProjectWorkspacePage() {
             <GraphView memories={memories} knowledge={knowledge?.data || null} />
           )}
           {view === "chat" && <ChatTab projectId={id} memories={memories} />}
+          {view === "files" && <FilesTab projectId={id} />}
         </div>
       </div>
 

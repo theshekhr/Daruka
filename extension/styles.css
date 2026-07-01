@@ -24,12 +24,35 @@
   transform: translateY(-1px);
 }
 
+#contextos-float-btn:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
 #contextos-float-btn .contextos-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: #3ecf8e;
   flex-shrink: 0;
+}
+
+#contextos-float-btn .contextos-dot-pulse {
+  background: #ffffff;
+  animation: contextos-pulse 1s ease-in-out infinite;
+}
+
+#contextos-float-btn .contextos-dot-success {
+  background: #3ecf8e;
+}
+
+#contextos-float-btn .contextos-dot-error {
+  background: #f56565;
+}
+
+@keyframes contextos-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
 #contextos-toast {

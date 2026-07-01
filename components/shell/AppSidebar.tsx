@@ -7,6 +7,7 @@ import { useTheme } from "@/lib/theme-context";
 import { signOutUser } from "@/lib/firebase-client";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import type { Project } from "@/lib/types";
+import ConfirmDialog from "@/components/workspace/ConfirmDialog";
 
 export default function AppSidebar() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function AppSidebar() {
   const [detailsName, setDetailsName] = useState("");
   const [detailsDesc, setDetailsDesc] = useState("");
   const [savingDetails, setSavingDetails] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -104,11 +106,17 @@ export default function AppSidebar() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this project? This removes all its memories permanently.")) return;
+  function requestDelete(project: Project) {
+    setProjectToDelete(project);
+    setMenuOpenId(null);
+  }
+
+  async function confirmDeleteProject() {
+    if (!projectToDelete) return;
+    const id = projectToDelete.id;
+    setProjectToDelete(null);
     await apiDelete(`/api/projects/${id}`);
     setProjects((prev) => prev.filter((p) => p.id !== id));
-    setMenuOpenId(null);
     if (params?.id === id) router.push("/dashboard");
   }
 
@@ -156,7 +164,7 @@ export default function AppSidebar() {
                     className="w-full rounded-md border border-[var(--accent)] bg-[var(--bg3)] px-2.5 py-1.5 text-[13px] text-[var(--text)] outline-none"
                   />
                 ) : (
-                  // NOTE: this is a <div role="button"> rather than a real <button>
+                  // This is a <div role="button"> rather than a real <button>
                   // because it contains a nested, independently-clickable "..." button
                   // for the project menu. Nesting <button> inside <button> is invalid
                   // HTML and causes a React hydration error.
@@ -212,7 +220,7 @@ export default function AppSidebar() {
                       Edit name & description
                     </button>
                     <button
-                      onClick={() => handleDelete(project.id)}
+                      onClick={() => requestDelete(project)}
                       className="flex w-full items-center px-3 py-1.5 text-left text-[12px] text-[var(--red)] hover:bg-[var(--bg4)]"
                     >
                       Delete
@@ -407,6 +415,16 @@ export default function AppSidebar() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!projectToDelete}
+        title="Delete project"
+        message={`Delete "${projectToDelete?.name}"? This removes all its memories permanently.`}
+        confirmLabel="Delete"
+        danger
+        onConfirm={confirmDeleteProject}
+        onCancel={() => setProjectToDelete(null)}
+      />
     </aside>
   );
 }

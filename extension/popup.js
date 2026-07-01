@@ -1,5 +1,5 @@
 // ── CONFIG ──
-const APP_URL = 'https://contextos-xi.vercel.app'
+const APP_URL = 'https://daruka.vercel.app'
 
 // AI site detection
 const AI_SITES = {
@@ -61,57 +61,62 @@ function hideStatus(elementId) {
 
 // ── CONNECT SCREEN ──
 document.getElementById('connect-btn').addEventListener('click', async () => {
-  const token = document.getElementById('token-input').value.trim()
+  const token = document.getElementById('token-input').value.trim();
   if (!token) {
-    showStatus('connect-status', 'error', 'Please paste your extension token.')
-    return
+    showStatus('connect-status', 'error', 'Please paste your extension token.');
+    return;
   }
 
-  const btn = document.getElementById('connect-btn')
-  btn.disabled = true
-  btn.textContent = 'Verifying...'
-  hideStatus('connect-status')
+  const btn = document.getElementById('connect-btn');
+  btn.disabled = true;
+  btn.textContent = 'Verifying...';
+  hideStatus('connect-status');
 
   try {
-    // Verify token by fetching projects
-    const res = await fetch(`${APP_URL}/api/projects`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    // Verify the freshly-typed token by passing it explicitly \u2014
+    // it hasn't been saved to storage yet, so the regular API_FETCH
+    // message (which reads from storage) would always fail here.
+    const res = await new Promise(resolve => {
+      chrome.runtime.sendMessage({
+        type: "VERIFY_TOKEN",
+        token: token
+      }, resolve);
+    });
 
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.error || 'Invalid token')
-    }
+    if (!res.success) throw new Error(res.error || 'Invalid token');
 
-    const projects = await res.json()
+    const projects = res.data;
 
-    // Also get user email from the token info endpoint
-    let email = 'Your account'
+    // Get user email using the now-confirmed-valid token
+    let email = 'Your account';
     try {
-      const settingsRes = await fetch(`${APP_URL}/api/settings`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (settingsRes.ok) {
-        const settings = await settingsRes.json()
-        email = settings.email || email
+      const settingsRes = await new Promise(r => {
+        chrome.runtime.sendMessage({
+          type: "VERIFY_TOKEN",
+          token: token,
+          path: "/api/settings"
+        }, r);
+      });
+      if (settingsRes.success) {
+        email = settingsRes.data.email || email;
       }
     } catch (_) {}
 
-    // Store token + email
-    await chrome.storage.local.set({ extensionToken: token, userEmail: email })
-    showStatus('connect-status', 'success', 'Connected successfully!')
+    // Only now do we persist the token, since we've confirmed it's valid
+    await chrome.storage.local.set({ extensionToken: token, userEmail: email });
+    showStatus('connect-status', 'success', 'Connected successfully!');
 
-    setTimeout(async () => {
-      showScreen('loading')
-      await loadMainScreen(token, email)
-    }, 800)
+    setTimeout(() => {
+      showScreen('loading');
+      loadMainScreen(token, email);
+    }, 800);
 
   } catch (err) {
-    showStatus('connect-status', 'error', err.message || 'Connection failed. Check your token.')
-    btn.disabled = false
-    btn.textContent = 'Connect'
+    showStatus('connect-status', 'error', err.message || 'Connection failed.');
+    btn.disabled = false;
+    btn.textContent = 'Connect';
   }
-})
+});
 
 // Allow Enter key to connect
 document.getElementById('token-input').addEventListener('keydown', (e) => {
@@ -131,18 +136,23 @@ async function loadMainScreen(token, email) {
     document.getElementById('user-email').textContent = email || 'Connected'
 
     // Fetch projects
-    const res = await fetch(`${APP_URL}/api/projects`, {
-      headers: { Authorization: `Bearer ${token}` }
+    const apiRes = await new Promise(resolve => {
+      chrome.runtime.sendMessage({
+        type: 'API_FETCH',
+        path: '/api/projects'
+      }, resolve)
     })
 
-    if (res.status === 401) {
-      // Token expired or revoked
-      await chrome.storage.local.remove(['extensionToken', 'userEmail', 'activeProjectId', 'activeProjectName'])
-      showScreen('connect')
-      return
+    if (!apiRes.success) {
+      if (apiRes.error?.includes('401') || apiRes.error?.includes('NO_TOKEN')) {
+        await chrome.storage.local.remove(['extensionToken', 'userEmail', 'activeProjectId', 'activeProjectName'])
+        showScreen('connect')
+        return
+      }
+      throw new Error(apiRes.error || 'Failed to load projects')
     }
 
-    const projects = await res.json()
+    const projects = apiRes.data
 
     // Check if a project was previously selected and is still valid
     const { activeProjectId: storedProjectId } = await chrome.storage.local.get('activeProjectId')
@@ -161,7 +171,7 @@ async function loadMainScreen(token, email) {
         item.innerHTML = `
           <span class="project-dot"></span>
           <span class="project-name">${escapeHtml(p.name)}</span>
-          <span class="project-memory-count" id="count-${p.id}">—</span>
+          <span class="project-memory-count" id="count-${p.id}">\u2014</span>
         `
         item.addEventListener('click', () => selectProject(p.id, p.name))
         list.appendChild(item)
@@ -285,7 +295,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
       const items = extracted[cat.key] || []
       const pill = document.createElement('span')
       pill.className = `extracted-pill${items.length > 0 ? ' has-data' : ''}`
-      pill.textContent = items.length > 0 ? `${cat.label} · ${items.length}` : cat.label
+      pill.textContent = items.length > 0 ? `${cat.label} \u00b7 ${items.length}` : cat.label
       pillsContainer.appendChild(pill)
     })
 

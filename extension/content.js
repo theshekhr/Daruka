@@ -5,17 +5,12 @@
     let turns = [];
 
     if (SITE === "Claude") {
-      // The actual scrollable conversation column. Anything outside this
-      // container (sidebar, other extensions' injected UI, usage banners)
-      // is structurally excluded just by anchoring here.
       const container = document.querySelector(
         ".flex-1.flex.flex-col.px-4.max-w-3xl.mx-auto.w-full.pt-1"
       );
 
       if (container) {
         Array.from(container.children).forEach((turn) => {
-          // User messages render inside a bubble with this background/shape.
-          // Claude's responses use a plain grid layout with no bubble.
           const isUser = !!turn.querySelector(
             ".bg-bg-300.rounded-xl.break-words.text-text-100"
           );
@@ -24,9 +19,6 @@
         });
       }
 
-      // Narrow fallback only, in case Claude.ai changes this structure again.
-      // Deliberately does NOT fall back to grabbing <main> or <body> wholesale,
-      // since that previously captured unrelated sidebar/extension content.
       if (turns.length === 0) {
         const userSelectors = '[data-testid="user-message"], .font-user-message';
         const aiSelectors = '[data-testid="chat-message"], .font-claude-message';
@@ -38,8 +30,6 @@
         });
       }
     } else {
-      // ChatGPT renders each turn inside [data-message-author-role] — already
-      // confirmed working, left unchanged.
       const nodes = document.querySelectorAll("[data-message-author-role]");
       nodes.forEach((node) => {
         const role = node.getAttribute("data-message-author-role");
@@ -52,69 +42,102 @@
     return turns.join("\n");
   }
 
+  function getButton() {
+    return document.getElementById("contextos-float-btn");
+  }
+
+  function setButtonState(state, projectName) {
+    const btn = getButton();
+    if (!btn) return;
+
+    if (state === "idle") {
+      btn.innerHTML = `<span class="contextos-dot"></span> Add to Memory`;
+      btn.disabled = false;
+    } else if (state === "adding") {
+      btn.innerHTML = `<span class="contextos-dot contextos-dot-pulse"></span> Adding to ${escapeHtml(projectName)}...`;
+      btn.disabled = true;
+    } else if (state === "added") {
+      btn.innerHTML = `<span class="contextos-dot contextos-dot-success"></span> Added to ${escapeHtml(projectName)}`;
+      btn.disabled = false;
+      setTimeout(() => setButtonState("idle"), 2500);
+    } else if (state === "error") {
+      btn.innerHTML = `<span class="contextos-dot contextos-dot-error"></span> ${escapeHtml(projectName)}`;
+      btn.disabled = false;
+      setTimeout(() => setButtonState("idle"), 3500);
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
   function createButton() {
-    if (document.getElementById("contextos-float-btn")) return;
+    if (getButton()) return;
+
     const btn = document.createElement("button");
     btn.id = "contextos-float-btn";
-    btn.innerHTML = `
-      <span class="contextos-dot"></span>
-      Add to Memory
-    `;
+    btn.innerHTML = `<span class="contextos-dot"></span> Add to Memory`;
     btn.addEventListener("click", handleClick);
     document.body.appendChild(btn);
   }
 
-  function handleClick() {
-    const conversation = scrapeConversation();
-    if (!conversation || conversation.length < 10) {
-      showToast("No conversation found on this page yet.");
+  async function handleClick() {
+    // Read the currently active project directly from storage at click
+    // time, so the button always reflects the real current selection
+    // instead of any state borrowed from a separate popup instance.
+    const { extensionToken, activeProjectId, activeProjectName } =
+      await chrome.storage.local.get(["extensionToken", "activeProjectId", "activeProjectName"]);
+
+    if (!extensionToken) {
+      setButtonState("error", "Connect account in popup first");
       return;
     }
+
+    if (!activeProjectId) {
+      setButtonState("error", "Pick a project in popup first");
+      return;
+    }
+
+    const conversation = scrapeConversation();
+    if (!conversation || conversation.length < 10) {
+      setButtonState("error", "No conversation found yet");
+      return;
+    }
+
+    // Immediate feedback, before the network round-trip even starts
+    setButtonState("adding", activeProjectName || "project");
+
     chrome.runtime.sendMessage(
       { type: "CAPTURE_CONVERSATION", payload: { aiModel: SITE, conversation } },
-      (response) => {
-        if (response?.needsAuth) {
-          showToast("Connect your ContextOS account in the extension popup first.");
-        } else if (response?.needsProject) {
-          showToast("Open the extension popup to pick a project, then click Add to Memory again.");
-        }
+      () => {
+        // Actual success/error state arrives asynchronously via the
+        // SAVE_SUCCESS / SAVE_ERROR message listener below, since
+        // background.js does the real work after this initial ack.
       }
     );
-  }
-
-  function showToast(message) {
-    let toast = document.getElementById("contextos-toast");
-    if (!toast) {
-      toast = document.createElement("div");
-      toast.id = "contextos-toast";
-      document.body.appendChild(toast);
-    }
-    toast.textContent = message;
-    toast.classList.add("show");
-    setTimeout(() => toast.classList.remove("show"), 3200);
   }
 
   // Listen for messages from either the popup (project-picker flow) or the
   // background script (floating-button flow).
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    // The popup asks for the page's conversation text and expects a reply.
     if (message.action === "scrapeConversation") {
       const text = scrapeConversation();
       sendResponse({ text });
-      return; // synchronous reply, no need to keep the channel open
+      return;
     }
 
-    // Save results coming back from the background script (floating-button flow).
     if (message.type === "SAVE_SUCCESS") {
-      showToast("Saved to ContextOS \u2713");
+      setButtonState("added", message.projectName || "project");
     } else if (message.type === "SAVE_ERROR") {
-      showToast(message.error || "Failed to save.");
+      setButtonState("error", message.error || "Failed to save");
     }
   });
 
   createButton();
 
-  // Some SPAs remove/replace the DOM on navigation; keep re-injecting the button
   const observer = new MutationObserver(() => createButton());
   observer.observe(document.body, { childList: true, subtree: true });
 })();

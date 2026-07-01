@@ -1,12 +1,16 @@
-const API_BASE = "https://contextos-xi.vercel.app";
+const API_BASE = "https://daruka.vercel.app";
 
 async function getStoredAuth() {
-  const data = await chrome.storage.local.get(["extensionToken", "activeProjectId"]);
-  return { token: data.extensionToken || null, activeProjectId: data.activeProjectId || null };
+  const data = await chrome.storage.local.get(["extensionToken", "activeProjectId", "activeProjectName"]);
+  return {
+    token: data.extensionToken || null,
+    activeProjectId: data.activeProjectId || null,
+    activeProjectName: data.activeProjectName || null,
+  };
 }
 
-async function apiFetch(path, options = {}) {
-  const { token } = await getStoredAuth();
+async function apiFetch(path, options = {}, tokenOverride = null) {
+  const token = tokenOverride || (await getStoredAuth()).token;
   if (!token) throw new Error("NO_TOKEN");
 
   const res = await fetch(`${API_BASE}${path}`, {
@@ -37,7 +41,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     apiFetch("/api/projects")
       .then((projects) => sendResponse({ projects }))
       .catch((err) => sendResponse({ error: err.message }));
-    return true; // keep the message channel open for the async response
+    return true;
   }
 
   if (message.type === "TEST_TOKEN") {
@@ -46,10 +50,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(() => sendResponse({ valid: false }));
     return true;
   }
+
+  if (message.type === "API_FETCH") {
+    apiFetch(message.path, message.options || {})
+      .then((data) => sendResponse({ success: true, data }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.type === "API_POST") {
+    apiFetch(message.path, {
+      method: "POST",
+      body: JSON.stringify(message.body),
+    })
+      .then((data) => sendResponse({ success: true, data }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.type === "VERIFY_TOKEN") {
+    apiFetch(message.path || "/api/projects", {}, message.token)
+      .then((data) => sendResponse({ success: true, data }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
 });
 
 async function handleCapture(payload, tabId) {
-  const { token, activeProjectId } = await getStoredAuth();
+  // Snapshot the active project at the moment the click happened, so if the
+  // user switches projects in the popup mid-save, this save still completes
+  // against the project that was active when they clicked.
+  const { token, activeProjectId, activeProjectName } = await getStoredAuth();
 
   if (!token) {
     chrome.tabs.sendMessage(tabId, { type: "SAVE_ERROR", error: "Connect your account in the extension popup first." });
@@ -70,7 +101,7 @@ async function handleCapture(payload, tabId) {
         raw_conversation: payload.conversation,
       }),
     });
-    chrome.tabs.sendMessage(tabId, { type: "SAVE_SUCCESS" });
+    chrome.tabs.sendMessage(tabId, { type: "SAVE_SUCCESS", projectName: activeProjectName });
   } catch (err) {
     chrome.tabs.sendMessage(tabId, { type: "SAVE_ERROR", error: err.message });
   }

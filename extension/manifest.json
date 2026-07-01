@@ -44,10 +44,12 @@
   ],
 
   "host_permissions": [
-    "https://chat.openai.com/*",
-    "https://chatgpt.com/*",
-    "https://claude.ai/*",
-    "https://contextos-xi.vercel.app/*"
+     "https://chat.openai.com/*",
+  "https://chatgpt.com/*",
+  "https://claude.ai/*",
+  "https://contextos-xi.vercel.app/*",
+  "https://daruka.vercel.app/*",
+  "https://*.vercel.app/*"
   ],
 
   "web_accessible_resources": [

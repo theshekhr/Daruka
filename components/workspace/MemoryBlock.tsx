@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { MemoryBlock as MemoryBlockType } from "@/lib/types";
+import ConfirmDialog from "@/components/workspace/ConfirmDialog";
 
 const CATEGORY_STYLES: Record<string, { label: string; bg: string; text: string; border: string }> = {
   decisions: { label: "decision", bg: "rgba(255,255,255,0.04)", text: "#888888", border: "rgba(255,255,255,0.08)" },
@@ -25,19 +26,35 @@ export default function MemoryBlock({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const activeCategories = Object.entries(CATEGORY_STYLES).filter(
     ([key]) => memory.extracted_data?.[key as keyof typeof memory.extracted_data]?.length > 0
   );
 
-  async function handleDelete(e: React.MouseEvent) {
+  function requestDelete(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm("Delete this memory? This can't be undone.")) return;
+    setConfirmOpen(true);
+  }
+
+  async function confirmDelete() {
+    setConfirmOpen(false);
     setDeleting(true);
     try {
       onDelete(memory.id);
     } finally {
       setDeleting(false);
+    }
+  }
+
+  function toggleExpanded() {
+    setExpanded((e) => !e);
+  }
+
+  function handleHeaderKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggleExpanded();
     }
   }
 
@@ -47,9 +64,12 @@ export default function MemoryBlock({
         expanded ? "border-[var(--text3)]" : "border-[var(--border)] hover:border-[var(--border2)]"
       } ${deleting ? "opacity-40" : ""}`}
     >
-      <button
-        onClick={() => setExpanded((e) => !e)}
-        className="flex w-full flex-col gap-2.5 p-4 text-left"
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={toggleExpanded}
+        onKeyDown={handleHeaderKeyDown}
+        className="flex w-full flex-col gap-2.5 p-4 text-left cursor-pointer"
       >
         <div className="flex items-start gap-2.5">
           <span
@@ -70,7 +90,7 @@ export default function MemoryBlock({
             </p>
           </div>
           <button
-            onClick={handleDelete}
+            onClick={requestDelete}
             disabled={deleting}
             className="flex-shrink-0 rounded-[4px] p-1.5 text-[var(--text3)] transition hover:bg-[var(--red)]/10 hover:text-[var(--red)]"
             title="Delete memory"
@@ -94,7 +114,7 @@ export default function MemoryBlock({
             ))}
           </div>
         )}
-      </button>
+      </div>
 
       {expanded && (
         <div className="border-t border-[var(--border)] px-4 py-3.5">
@@ -134,11 +154,21 @@ export default function MemoryBlock({
       )}
 
       <button
-        onClick={() => setExpanded((e) => !e)}
+        onClick={toggleExpanded}
         className="block w-full border-t border-[var(--border)] px-4 py-2 text-left text-[11px] text-[var(--text3)] hover:text-[var(--text2)]"
       >
         {expanded ? "▲ Collapse" : "▼ Show extracted knowledge & conversation"}
       </button>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete memory"
+        message="Are you sure you want to delete this memory? This can't be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
